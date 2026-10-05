@@ -52,8 +52,6 @@ python ocrtest.py
 ## GPU について（あとで速くしたくなったら）
 
 - 動作確認は `gpu=False`（CPU）で十分。静止画なら 1 枚数秒。
-- C05 の **RTX 5070 は新しい世代**で、CUDA 12.6 以降に対応した新しい torch が必要（古いと `sm_120 not supported` で動かない）。
-- 同じ C05 の **GTX 1660 Ti は枯れていて標準の torch で動く**ので、GPU で詰まったらこちらが確実。
 - カードの選択は `CUDA_VISIBLE_DEVICES=0`（または `=1`）、確認は `nvidia-smi`。
 
 ## 注意：ROS 環境との干渉
