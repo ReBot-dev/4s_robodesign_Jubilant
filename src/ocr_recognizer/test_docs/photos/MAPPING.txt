@@ -1,0 +1,11 @@
+# 新しい名前  <-  撮影時のファイル名
+03_flat.jpg   <- IMG_20261019_125332190.jpg
+05_flat.jpg   <- IMG_20261019_125340243.jpg
+04_flat.jpg   <- IMG_20261019_125350401.jpg
+01_flat.jpg   <- IMG_20261019_125357477.jpg
+02_flat.jpg   <- IMG_20261019_125408853.jpg
+03_angle.jpg  <- IMG_20261019_125419634.jpg
+05_angle.jpg  <- IMG_20261019_125431498.jpg
+04_angle.jpg  <- IMG_20261019_125437186.jpg
+01_angle.jpg  <- IMG_20261019_125442994.jpg
+02_angle.jpg  <- IMG_20261019_125449664.jpg

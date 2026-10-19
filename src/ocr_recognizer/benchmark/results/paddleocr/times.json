@@ -1,0 +1,22 @@
+{
+ "raw/01_angle": 101.5,
+ "raw/01_flat": 75.75,
+ "raw/02_angle": 99.46,
+ "raw/02_flat": 94.75,
+ "raw/03_angle": 91.52,
+ "raw/03_flat": 82.32,
+ "raw/04_angle": 90.6,
+ "raw/04_flat": 88.12,
+ "raw/05_angle": 98.02,
+ "raw/05_flat": 91.85,
+ "rect/01_angle": 52.36,
+ "rect/01_flat": 54.52,
+ "rect/02_angle": 55.17,
+ "rect/02_flat": 56.98,
+ "rect/03_angle": 57.55,
+ "rect/03_flat": 53.55,
+ "rect/04_angle": 46.32,
+ "rect/04_flat": 46.89,
+ "rect/05_angle": 51.62,
+ "rect/05_flat": 57.4
+}
