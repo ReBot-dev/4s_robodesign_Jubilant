@@ -1,0 +1,45 @@
+SV-2040 Micro Servo Motor
+Datasheet
+Rev 1.2 / 2026-10-01
+1. Specifications
+Parameter
+Value
+Conditions / Notes
+Operating voltage
+4.8-6.0 V
+DC
+No-load speed
+0.12 s/609
+at 6.0 V
+Stall torque
+2.5 kgf-cm (0.245 N-m)
+at 6.0 v
+Rotation range
+t90" (180* total)
+Pulse width
+500-2500 pS
+Neutral: 1500 ps
+PWM period
+20 ms (50 Hz)
+Current draw
+Idle < 10 mA / Running < 650 mA
+at 6.0 V, no load
+Weight
+9.6 g
+Excluding cable
+Dimensions
+23.0 * 12.2 * 29.0 mm
+Excluding mounting tabs
+Operating temperature
+10 t0 +50 'C
+Non-condensing
+Cable
+3-wire , 150 mm
+Brown: GND / Red: VCC / Orange: Signal
+2. Precautions
+1. Do not exceed tne rated voltage (6.0 V). Doing s0 may cause damage or overheating
+2. Do not force tne oulput shaft by hand; The internal gears may break
+3.Do not keep povrer applied while the output snaft Is locked (more than 3 $)
+Specifications are subject t0 change writhout nouce for product improvement
+Doc
+No. SV2040-EN-012

@@ -1,0 +1,114 @@
+4
+SV2040-EN-012
+1.2 /2026-10-01
+Signal
+Orange:
+No:
+]
+8
+8
+2
+tabs
+mounting
+Red:
+Notes
+5
+Non-condensing
+load
+cable
+1
+1500
+GND
+1
+Conditions
+no
+=
+argov
+Neutral:
+Brown
+8
+Motor
+overheating
+product improvement:
+(s
+mA
+JO
+3
+Hl
+Servo
+8
+5
+HH
+Running
+mm
+2
+18
+1
+(0.245
+150 mm
+total)
+for
+Micro
+'C
+IS
+(ZH
+2
+h
+without notice
+8
+5
++50
+S
+3
+1
+8
+500-2500
+8
+<10
+8-6.0 V
+a/:
+3-wire,
+20 ms
+6 9
+Value
+S
+8
+0.12
+Idle
+5
+' chaege
+6
+4
+1
+voltage
+Kq
+M
+temperature
+the rated
+Specifications
+Precautions
+=
+are
+the
+range
+exceed
+draw
+H
+Specifications
+period
+Do not force
+not keep
+width
+=
+=
+Rotation
+8
+Cable
+Pulse
+8
+8
+~
+1.
+2
+3
+1.

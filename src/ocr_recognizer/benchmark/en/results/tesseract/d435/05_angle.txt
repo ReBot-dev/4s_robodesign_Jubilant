@@ -1,0 +1,12 @@
+SV-2040 Micro Servo Motor — Datasheet
+Rev, 1.2 / 2026-10-01
+1. Specifications
+wala aS
+Ce a
+a
+2. Precautions
+1, Do not exceed the rated voltage (6.0 V). Doing so may cause damage or overheating. 3
+2. Do not force the output shaft by hand. The internal gears may break.
+3. Do not keep power applied while the output shaft is locked (more than 3 s).
+* Specifications are subject to change without notice for product improvement.
+Doc. No. SV2040-EN-012
