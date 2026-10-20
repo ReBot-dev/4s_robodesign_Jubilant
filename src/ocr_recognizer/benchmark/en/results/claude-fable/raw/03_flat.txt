@@ -1,0 +1,11 @@
+Fall 2026 – Lab Room A Weekly Schedule
+Building 2, 2nd Floor / Updated: October 1, 2026
+Period | Time | Mon | Tue | Wed | Thu | Fri
+1 | 9:00–10:40 | Robot Design | — | Control Lab | — | Circuits Lab
+2 | 10:50–12:30 | Robot Design | Intro to Programming | Control Lab | Mechanisms | Circuits Lab
+3 | 13:20–15:00 | — | Intro to Programming | Open | Mechanisms | Team Project
+4 | 15:10–16:50 | Thesis Seminar | Open | Sensor Engineering | — | Team Project
+5 | 17:00–18:40 | Self-Study | Self-Study | — | Self-Study | —
+* “—” means the room is locked. “Open” means it can be used without a reservation.
+* Self-Study is available only to students who have registered their ID cards.
+* The schedule may change. Please check the bulletin board for the latest information.

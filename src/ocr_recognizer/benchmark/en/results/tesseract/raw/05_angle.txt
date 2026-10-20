@@ -1,0 +1,26 @@
+Stall torque
++907°
++90 (180° total)
+PWM period
+Operating temperature
+Excluding cable
+. 2 x 29 mn I
+23 0 x AlZd, 0
+Excludi g ounti g tabs
+Non-condensing
+-10 to +50 °C
+2. Precautions
+voltage (6.0 V). Doing so may cause damage or overheating. -
+ft by hand. The internal gears may break.
+haft is locked (more than 35).
+tice for product improvement.
+Brown: GND / Red: VCC / Orange: Signal
+exceed the rated
+e the output shal
+ied while the output S'
+hange without no!
+1. Do not
+2. Do not forc
+3, Do not keep
+Specifications ar
+Doc, No. 5v2040-EN-012

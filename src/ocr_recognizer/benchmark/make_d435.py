@@ -7,10 +7,11 @@ import math
 
 import cv2
 
+import dataset
 import rectify
 
 D435_PIXELS = 1920 * 1080
-OUT = rectify.HERE / 'd435'
+OUT = dataset.D435
 
 
 def main():

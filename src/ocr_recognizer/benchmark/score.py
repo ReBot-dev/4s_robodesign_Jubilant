@@ -21,19 +21,24 @@ from pathlib import Path
 from rapidfuzz import fuzz
 from rapidfuzz.distance import Levenshtein
 
-HERE = Path(__file__).resolve().parent
-GT_DIR = HERE.parent / 'test_docs'
-RESULTS = HERE / 'results'
+import dataset
+
+HERE = dataset.HERE
+GT_DIR = dataset.GT_DIR
+RESULTS = dataset.RESULTS
 
 DASHES = dict.fromkeys(map(ord, '‐‑‒–—―−－'), '-')
 WAVES = dict.fromkeys(map(ord, '〜～'), '~')
-KEY_TOKEN = re.compile(r'[0-9A-Za-z¥%μ±°≦×@/:.,\-~]+')
-KEY_MARK = re.compile(r'[0-9¥%μ±°≦×]')
+KEY_TOKEN = re.compile(r'[0-9A-Za-z$¥%μ±°≦≤×@/:.,\-~]+')
+KEY_MARK = re.compile(r'[0-9$¥%μ±°≦≤×]')
+
+
+def unify(s):
+    return unicodedata.normalize('NFKC', s).translate(DASHES).translate(WAVES)
 
 
 def norm(s):
-    s = unicodedata.normalize('NFKC', s).translate(DASHES).translate(WAVES)
-    return re.sub(r'[\s|]', '', s)
+    return re.sub(r'[\s|]', '', unify(s))
 
 
 def score(gt_text, ocr_text):
@@ -42,7 +47,9 @@ def score(gt_text, ocr_text):
     gt_all, ocr_all = ''.join(gt_lines), ''.join(ocr_lines)
     found = sum(fuzz.partial_ratio(g, ocr_all) >= 80 for g in gt_lines) if ocr_all else 0
     exact = sum(g in ocr_all for g in gt_lines)
-    keys = [t for t in KEY_TOKEN.findall(gt_all) if KEY_MARK.search(t) and len(t) >= 2]
+    # 空白を消す前の文から語を取る（英語は空白を消すと単語がつながり 1 語が長くなりすぎる）
+    keys = [t.strip('.,:') for t in KEY_TOKEN.findall(unify(gt_text))]
+    keys = [t for t in keys if KEY_MARK.search(t) and len(t) >= 2]
     key_ok = sum(t in ocr_all for t in keys)
     extra = sum(len(o) >= 3 and fuzz.partial_ratio(o, gt_all) < 60 for o in ocr_lines)
     return {

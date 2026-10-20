@@ -8,9 +8,11 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-HERE = Path(__file__).resolve().parent
-PHOTOS = HERE.parent / 'test_docs' / 'photos'
-OUT = HERE / 'rectified'
+import dataset
+
+HERE = dataset.HERE
+PHOTOS = dataset.PHOTOS
+OUT = dataset.RECTIFIED
 
 MARKER_MM, INSET_MM = 25, 10
 PX_PER_MM = 10  # 254 dpi 相当

@@ -34,6 +34,17 @@ python score.py                                  # 要 rapidfuzz
 
 ROS の Python パスが混ざらないように、`env -u PYTHONPATH` を付けて実行するのが安全。
 
+**英語版**（`test_docs/en/`）を使うときは、環境変数 `OCR_DATASET=en` を付けて同じコマンドを実行する。
+写真・補正画像・結果はすべて `benchmark/en/` 以下に分かれる（日本語版の結果は上書きしない）。
+
+```bash
+OCR_DATASET=en python rectify.py && OCR_DATASET=en python make_d435.py
+OCR_DATASET=en <venv>/bin/python run_oss.py paddleocr     # エンジンの言語設定も英語に切り替わる
+OCR_DATASET=en python score.py
+```
+
+`run_oss.py` は、結果がある画像は飛ばす（途中で止まっても続きから再開できる）。やり直すときは `OCR_FORCE=1` を付ける。
+
 ## Claude の読み取り方法
 
 Claude Code のサブエージェントを、モデル（Haiku / Sonnet / Opus / Fable）ごとに起動して読ませた。

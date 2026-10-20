@@ -1,0 +1,45 @@
+Doc.No. SY2040-EN-012
+Brod /Red Red Rec / De: Oranal OMOra
+Rev.1.2/2026-10-01
+Non-condensing
+sqel bulyounting tans
+Excluding cable
+at 6.0 y, load
+|
+Nelual: Isoo ps
+|
+at 6.0V
+at 6.0 
+DC
+Conditions Notes
+quauanordul 1onpord 101 asliou inouilm afueys of 15alqns are suonesuISads *
+(s E uey a, au) paysol sl yeys indino aul ally payjdde smod daay 10u ou "S
+"yea, Kew s」es6 jeuraiul ey⊥  puey Ág yeys indino ay, as:01 10u od 2
+D DI, LISAO 10 aбeurep asnes (ew os 6uiod "(A 0'9) abeljon pare) aus paas 10u 00 "T.
+3-Wire, 150 mm
+-10 to +50 OT-
+23.0×12.2 29.0 mm
+9.6
+Ide mA mA/ S Funing 5 s mA
+20 ms (50 Hz)
+500-2500 μs
+(12)01 。08T) .06千
+2.5kgf cm (0.245 N M)
+0.12 s/60°
+4.8-6.0V
+Value
+SV-20 Micro Sero Mizo Mor Mor Mest Mice
+2. Precautions
+Cable
+Operatang temperatie
+Dimensions
+Welgnt
+Current draw
+PWM Period
+Pulse widith
+Rotation range
+Stall torue
+No-load sped
+Operaing yoliage
+Parameter
+1. Specifications

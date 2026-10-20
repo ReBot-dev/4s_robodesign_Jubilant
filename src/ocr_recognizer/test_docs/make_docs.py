@@ -90,7 +90,7 @@ def cols(left, right, widths=('50%', '50%')):
 CSS = """
 @page { size: %(size)s; margin: 0; }
 * { box-sizing: border-box; }
-body { margin: 0; padding: 40mm 20mm; font-family: 'Noto Sans CJK JP';
+body { margin: 0; padding: 40mm 20mm; font-family: '%(font)s';
        font-size: %(base)s; color: #000; line-height: 1.6; }
 .marker { position: fixed; }
 .line, th, td, h1, h2 { white-space: nowrap; }
@@ -237,7 +237,7 @@ DOCS = [
 ]
 
 
-def build(name, size, base, parts):
+def build(name, size, base, parts, font='Noto Sans CJK JP', out=OUT, lang='ja'):
     landscape = 'landscape' in size
     pw, ph = (297, 210) if landscape else (210, 297)
     near, far_x, far_y = MARKER_INSET_MM, pw - MARKER_INSET_MM - MARKER_MM, ph - MARKER_INSET_MM - MARKER_MM
@@ -247,16 +247,160 @@ def build(name, size, base, parts):
         for i, (x, y) in corners.items()
     )
     body = ''.join(p[0] for p in parts)
-    html = (f'<!doctype html><html lang="ja"><head><meta charset="utf-8">'
-            f'<style>{CSS % {"size": size, "base": base}}</style></head>'
+    html = (f'<!doctype html><html lang="{lang}"><head><meta charset="utf-8">'
+            f'<style>{CSS % {"size": size, "base": base, "font": font}}</style></head>'
             f'<body>{markers}{body}</body></html>')
     doc = HTML(string=html).render()
     assert len(doc.pages) == 1, f'{name}: {len(doc.pages)} ページになった'
-    doc.write_pdf(OUT / f'{name}.pdf')
-    (OUT / f'{name}.txt').write_text('\n'.join(t for p in parts for t in p[1]) + '\n', encoding='utf-8')
+    out.mkdir(exist_ok=True)
+    doc.write_pdf(out / f'{name}.pdf')
+    (out / f'{name}.txt').write_text('\n'.join(t for p in parts for t in p[1]) + '\n', encoding='utf-8')
     print(f'{name}.pdf / {name}.txt')
 
 
+SERIF, SANS = 'Liberation Serif', 'Liberation Sans'
+
+# 英語版（海外の文書を想定）。(名前, 用紙, 基本の文字サイズ, 部品, 書体)
+DOCS_EN = [
+    ('01_notice', 'A4', '11pt', [
+        lines('October 20, 2026', align='right'),
+        lines('To: All Students and Staff'),
+        lines('From: Facilities Office, Sample Institute of Technology', align='right'),
+        title('Notice of Fall Fire Drill'),
+        lines('Thank you for your continued cooperation with our safety program.',
+              'A fire and earthquake drill will be held on the date shown below.',
+              'Classes will pause during the drill, and everyone will move outdoors.',
+              'Please stay calm and follow the instructions of the staff on duty.'),
+        space(),
+        lines('Details', align='center'),
+        space(2),
+        lines('1. Date: Thursday, November 12, 2026, 10:30 a.m. – 11:15 a.m.',
+              '2. Scenario: A magnitude 6 earthquake followed by a fire in Building B',
+              '3. Assembly point: Main Field (north side of the front gate)',
+              '4. What to bring: Nothing (please keep your valuables with you)'),
+        space(),
+        lines('If it rains, the drill will be replaced by an indoor announcement.',
+              'A final decision will be posted on the campus portal by 8:00 a.m.',
+              'For questions, contact the Facilities Office at ext. 2045.'),
+        lines('Thank you.', align='right'),
+    ], SERIF),
+    ('02_invoice', 'A4', '10pt', [
+        title('INVOICE'),
+        lines('Invoice No. INV-2026-1019-07', 'Invoice Date: 10/19/2026', 'Due Date: 11/30/2026',
+              align='right'),
+        space(3),
+        cols([
+            lines('BILL TO', cls='big'),
+            lines('Sample Institute of Technology',
+                  'Department of Robotics',
+                  '45 Campus Drive, Springfield, IL 62701'),
+            box(lines('Amount Due: $243.80', cls='big')),
+        ], [
+            lines('Example Robotics Supply Co.',
+                  '1200 Market Street, Suite 400',
+                  'Springfield, IL 62704',
+                  'Tel: (555) 010-4567',
+                  'Tax ID: 12-3456789'),
+        ], widths=('55%', '45%')),
+        space(3),
+        table([
+            ['Item', 'Description', 'Qty', 'Unit Price (USD)', 'Amount (USD)'],
+            ['SV-2040', 'Micro servo motor, 2.5 kg·cm', '4', '24.50', '98.00'],
+            ['AF-2020-500', 'Aluminum extrusion 20×20 mm, 500 mm', '6', '8.75', '52.50'],
+            ['M3-8-PH100', 'M3×8 pan head screw (100 pcs)', '2', '4.20', '8.40'],
+            ['LP-74-2200', 'Li-Po battery 7.4 V 2200 mAh', '1', '32.99', '32.99'],
+            ['USBC-1M', 'USB-C cable, 1.0 m', '3', '6.49', '19.47'],
+        ], aligns=['left', 'left', 'right', 'right', 'right'],
+           widths=['16%', '44%', '8%', '16%', '16%']),
+        table([
+            ['Subtotal', '211.36'],
+            ['Sales Tax (8.25%)', '17.44'],
+            ['Shipping', '15.00'],
+            ['Total', '$243.80'],
+        ], header=False, aligns=['left', 'right'], cls='sum'),
+        space(3),
+        lines('Payment by bank transfer: First Example Bank, Account No. 0012-3456-78'),
+        lines('* Please include the invoice number with your payment.',
+              '* Late payments are subject to a 1.5% monthly fee.', cls='small'),
+    ], SANS),
+    ('03_schedule', 'A4 landscape', '10pt', [
+        title('Fall 2026 – Lab Room A Weekly Schedule'),
+        lines('Building 2, 2nd Floor / Updated: October 1, 2026', align='right'),
+        table([
+            ['Period', 'Time', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+            ['1', '9:00–10:40', 'Robot Design', '—', 'Control Lab', '—', 'Circuits Lab'],
+            ['2', '10:50–12:30', 'Robot Design', 'Intro to Programming', 'Control Lab', 'Mechanisms', 'Circuits Lab'],
+            ['3', '13:20–15:00', '—', 'Intro to Programming', 'Open', 'Mechanisms', 'Team Project'],
+            ['4', '15:10–16:50', 'Thesis Seminar', 'Open', 'Sensor Engineering', '—', 'Team Project'],
+            ['5', '17:00–18:40', 'Self-Study', 'Self-Study', '—', 'Self-Study', '—'],
+        ], aligns=['center'] * 7,
+           widths=['7%', '13%', '16%', '16%', '16%', '16%', '16%']),
+        lines('* “—” means the room is locked; “Open” means it can be used without a reservation.',
+              '* Self-Study is available only to students who have registered their ID cards.',
+              '* The schedule may change. Please check the bulletin board for the latest information.',
+              cls='small'),
+    ], SANS),
+    ('04_flyer', 'A4', '11pt', [
+        lines('For Students in Grades 5–9', align='center'),
+        title('Robot Building Workshop', cls='huge'),
+        lines('Build Your First Line-Following Car!', align='center', cls='big'),
+        lines('Now Accepting Applications', align='center', cls='big'),
+        space(4),
+        cols([
+            lines('Who: Grades 5–9',
+                  'Seats: 20, first come first served',
+                  'Fee: $15 (materials included)',
+                  'When: Sunday, December 13, 2026'),
+            lines('1:30 p.m. – 4:30 p.m.', cls='indent'),
+            lines('Where: Main Building, Room 2A'),
+            lines('Sample Institute of Technology', cls='indent'),
+        ], [
+            box(lines('What You Will Do', cls='big'),
+                lines('• Assemble motors and sensors',
+                      '• Program it to follow a line',
+                      '• Race your friends!'),
+                lines('Take your robot home!')),
+        ], widths=('45%', '55%')),
+        space(6),
+        box(lines('How to apply: Send an email by Monday, November 30.',
+                  "Include your name, grade, and a parent's phone number.",
+                  'Email: workshop@example.com',
+                  'Hosted by the Robotics Student Team, Sample Institute of Technology')),
+    ], SANS),
+    ('05_datasheet', 'A4', '9pt', [
+        title('SV-2040 Micro Servo Motor – Datasheet'),
+        lines('Rev. 1.2 / 2026-10-01', align='right'),
+        heading('1. Specifications'),
+        table([
+            ['Parameter', 'Value', 'Conditions / Notes'],
+            ['Operating voltage', '4.8–6.0 V', 'DC'],
+            ['No-load speed', '0.12 s/60°', 'at 6.0 V'],
+            ['Stall torque', '2.5 kgf·cm (0.245 N·m)', 'at 6.0 V'],
+            ['Rotation range', '±90° (180° total)', '—'],
+            ['Pulse width', '500–2500 μs', 'Neutral: 1500 μs'],
+            ['PWM period', '20 ms (50 Hz)', '—'],
+            ['Current draw', 'Idle ≤ 10 mA / Running ≤ 650 mA', 'at 6.0 V, no load'],
+            ['Weight', '9.6 g', 'Excluding cable'],
+            ['Dimensions', '23.0 × 12.2 × 29.0 mm', 'Excluding mounting tabs'],
+            ['Operating temperature', '−10 to +50 °C', 'Non-condensing'],
+            ['Cable', '3-wire, 150 mm', 'Brown: GND / Red: VCC / Orange: Signal'],
+        ], widths=['25%', '40%', '35%']),
+        heading('2. Precautions'),
+        lines('1. Do not exceed the rated voltage (6.0 V). Doing so may cause damage or overheating.',
+              '2. Do not force the output shaft by hand. The internal gears may break.',
+              '3. Do not keep power applied while the output shaft is locked (more than 3 s).',
+              '* Specifications are subject to change without notice for product improvement.',
+              cls='small'),
+        lines('Doc. No. SV2040-EN-012', align='right', cls='small'),
+    ], SANS),
+]
+
+
 if __name__ == '__main__':
-    for d in DOCS:
-        build(*d)
+    import sys
+    if sys.argv[1:] == ['en']:
+        for name, size, base, parts, font in DOCS_EN:
+            build(name, size, base, parts, font=font, out=OUT / 'en', lang='en')
+    else:
+        for d in DOCS:
+            build(*d)

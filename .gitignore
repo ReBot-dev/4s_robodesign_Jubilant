@@ -8,3 +8,10 @@ log/
 venv/
 __pycache__/
 *.pyc
+
+# 写真から rectify.py / make_d435.py で再生成できる画像（容量が大きいので入れない）
+src/ocr_recognizer/benchmark/en/rectified/
+src/ocr_recognizer/benchmark/en/d435/
+
+# エディタの一時ファイル
+*.swp

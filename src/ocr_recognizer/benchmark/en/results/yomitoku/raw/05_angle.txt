@@ -1,0 +1,45 @@
+SV-2040 Micro Servo Motor - Datasheet
+1. Specifications
+Rev.1.2 1 2026-10-01
+Vanue
+Parameter
+Conditions / Notes
+4.8-6.0V
+Operating voliag
+DC
+0.12 s/60°
+No-load speed
+at .0V
+ar6.0V
+2.5 kg cm(0.245 N:m)
+Stall torque
+Neutel: 1500 HS
+1
+(1) 180 。08T) 。06千
+Rotation range
+500-2500 μs
+Pulse width
+at 0.0 / 10ad
+Idle mA mA / Runing s s mA
+Current draw
+Browi Red  Red / Red Or ved VCC / MMM
+3-Wire,150 mm
+Cable
+Excind ma mounting tads
+23.0 ×12.2×29.0 mm
+Dimensions
+Exclding cadie
+9.69
+Weignt
+1
+20 ms (50 Hz)
+PWMM perod
+Non-condensing
+-10 to +50 C
+Operating temperatature
+Doc. No.SV2040-EN-012
+·  y 
+2. Precautions
+2, Dot nou sieab jeurs,   for put farnerne indano a aut asioj jou od on
+3, Der per per the whed anered tot ind ione ane e illinted amod daad lou tou of
+quaurandul  ponpord 101 asnou inoum afueueys of isalqns ale suouesy! *
