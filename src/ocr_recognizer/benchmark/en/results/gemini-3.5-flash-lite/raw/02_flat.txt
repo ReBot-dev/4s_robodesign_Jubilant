@@ -1,0 +1,22 @@
+INVOICE | Invoice No. INV-2026-1019-07
+ | Invoice Date: 10/19/2026
+ | Due Date: 11/30/2026
+BILL TO | Example Robotics Supply Co.
+Sample Institute of Technology | 1200 Market Street, Suite 400
+Department of Robotics | Springfield, IL 62704
+45 Campus Drive, Springfield, IL 62701 | Tel: (555) 010-4567
+ | Tax ID: 12-3456789
+Amount Due: $243.80 | 
+Item | Description | Qty | Unit Price (USD) | Amount (USD)
+SV-2040 | Micro servo motor, 2.5 kg·cm | 4 | 24.50 | 98.00
+AF-2020-500 | Aluminum extrusion 20×20 mm, 500 mm | 6 | 8.75 | 52.50
+M3-8-PH100 | M3×8 pan head screw (100 pcs) | 2 | 4.20 | 8.40
+LP-74-2200 | Li-Po battery 7.4 V 2200 mAh | 1 | 32.99 | 32.99
+USBC-1M | USB-C cable, 1.0 m | 3 | 6.49 | 19.47
+ | Subtotal | 211.36
+ | Sales Tax (8.25%) | 17.44
+ | Shipping | 15.00
+ | Total | $243.80
+Payment by bank transfer: First Example Bank, Account No. 0012-3456-78 | 
+* Please include the invoice number with your payment. | 
+* Late payments are subject to a 1.5% monthly fee. |

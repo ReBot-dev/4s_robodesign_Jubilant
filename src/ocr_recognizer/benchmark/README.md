@@ -20,6 +20,7 @@
 | `rectify.py` | ArUco で正対補正する |
 | `make_d435.py` | D435i 相当に縮小してから正対補正する |
 | `run_oss.py` | OSS の OCR（EasyOCR / PaddleOCR / Tesseract / YomiToku / Surya）で読む |
+| `run_gemini.py` | Gemini（API）で読む。無料枠の回数制限・混雑のときは待ってやり直す（`OCR_DATASET=en <venv>/bin/python run_gemini.py gemini-3.5-flash-lite`。API キーは `~/.config/gemini/api_key`） |
 | `score.py` | 正解と比べて採点する（`results/scores.csv` と表を出力） |
 | `results/<エンジン>/<条件>/<画像名>.txt` | 読み取り結果 |
 | `results/<エンジン>/times.json` | 1 枚あたりの処理時間（秒） |
