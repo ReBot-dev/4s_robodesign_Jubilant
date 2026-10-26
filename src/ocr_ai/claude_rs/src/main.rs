@@ -61,7 +61,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             //読み取りのデータを作ってもらう
             let query: serde_json::Value = client
                 .post("http://localhost:50021/audio_query")
-                .query(&[("text", "こんにちは"), ("speaker", "3")])
+                .query(&[("text", reading.summary.as_str()), ("speaker", "3")])
                 .send()?
                 .json()?;
 
