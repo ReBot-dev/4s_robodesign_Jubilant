@@ -15,3 +15,5 @@ src/ocr_recognizer/benchmark/en/d435/
 
 # エディタの一時ファイル
 *.swp
+target/
+*.wav
