@@ -12,8 +12,9 @@ ArUco 班が出す「正対補正した紙の画像」を入力にして、読�
 ## いまの状況
 
 - **OCR エンジンの比較は完了。** 結果は下の「これまでの結果」と [`benchmark/RESULTS.md`](benchmark/RESULTS.md)。
-- **LLM（Claude）での翻訳・読み上げ文の生成は動作確認済み**（[`../ocr_ai/`](../ocr_ai/)）。
-- 次は音声出力（VOICEVOX）。
+- **LLM（Claude）での翻訳・読み上げ文の生成は動作確認済み**（[`../ocr_ai/`](../ocr_ai/)）。Python 版に加えて Rust 版（`claude_rs`）も動く。
+- **VOICEVOX での音声合成も動作確認済み**（[`../ocr_voicevox/`](../ocr_voicevox/)）。
+- **ArUco 班との受け渡しは「正対補正済みの画像をもらう」案で提案中**（下の「これから」）。
 
 ## これまでの結果
 
@@ -142,6 +143,11 @@ cd paddleocr_test && python test.py        # PaddleOCR
 ## これから
 
 - 読み取りは Claude（Haiku）を本命、ネットなしの代わりに YomiToku、という方向で決める。
-- 音声出力（VOICEVOX）をつなぎ、「文字列 → Claude → 音声」を通す。
-- ArUco 班と、受け渡しの形（正対補正済みの画像を渡すか、生画像と 4 隅の座標を渡すか）とトピック名を決める。
-- ROS 2 パッケージ化（`ros2 pkg create`）して、画像トピックを購読 → 読み取った文字列を publish する。
+- Claude の結果（`summary`）を VOICEVOX に渡して、「文字列 → Claude → 音声」を通しで動かす。
+- ArUco 班との受け渡し（提案中・未確定）:
+  - ArUco 班が正対補正まで行い、`sensor_msgs/Image` で渡す（補正コードは [`benchmark/rectify.py`](benchmark/rectify.py) を提供）
+  - 毎フレームではなく、4 つのマーカーが数フレーム安定して見えたときに 1 枚だけ送る。読み終えたら OCR 側から合図を返す
+  - カラー画像は 1920×1080、補正後は 1mm = 10px
+  - トピック名は仮に `/document/image`（補正済み画像）と `/ocr/done`（読み上げ終了の合図）
+  - 未決: A4 横の紙の見分け方（別の ID を使うか、マーカーの実寸から計算するか）
+- ROS 2 パッケージ化（`ros2 pkg create`）して、画像トピックを購読 → 読み取り → 翻訳 → 読み上げ、を 1 つのノードにする（ROS 2 で正式に使える Python で書く）。
