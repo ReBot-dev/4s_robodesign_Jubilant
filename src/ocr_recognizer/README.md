@@ -14,7 +14,7 @@ ArUco 班が出す「正対補正した紙の画像」を入力にして、読�
 - **OCR エンジンの比較は完了。** 結果は下の「これまでの結果」と [`benchmark/RESULTS.md`](benchmark/RESULTS.md)。
 - **LLM（Claude）での翻訳・読み上げ文の生成は動作確認済み**（[`../ocr_ai/`](../ocr_ai/)）。Python 版に加えて Rust 版（`claude_rs`）も動く。
 - **VOICEVOX での音声合成も動作確認済み**（[`../ocr_voicevox/`](../ocr_voicevox/)）。
-- **ArUco 班との受け渡しは「正対補正済みの画像をもらう」案で提案中**（下の「これから」）。
+- **正対補正は OCR 班でやることに決定**。カメラ画像を直接受け取り、ArUco の検出から補正まで OCR 側で行う（下の「これから」）。
 
 ## これまでの結果
 
@@ -144,10 +144,10 @@ cd paddleocr_test && python test.py        # PaddleOCR
 
 - 読み取りは Claude（Haiku）を本命、ネットなしの代わりに YomiToku、という方向で決める。
 - Claude の結果（`summary`）を VOICEVOX に渡して、「文字列 → Claude → 音声」を通しで動かす。
-- ArUco 班との受け渡し（提案中・未確定）:
-  - ArUco 班が正対補正まで行い、`sensor_msgs/Image` で渡す（補正コードは [`benchmark/rectify.py`](benchmark/rectify.py) を提供）
-  - 毎フレームではなく、4 つのマーカーが数フレーム安定して見えたときに 1 枚だけ送る。読み終えたら OCR 側から合図を返す
-  - カラー画像は 1920×1080、補正後は 1mm = 10px
-  - トピック名は仮に `/document/image`（補正済み画像）と `/ocr/done`（読み上げ終了の合図）
+- 正対補正は OCR 班で行う（決定）:
+  - D435i のカラー画像（1920×1080）を直接購読し、`cv2.aruco` でマーカーを検出 → 補正（1mm = 10px）。[`benchmark/rectify.py`](benchmark/rectify.py) の処理を使う
+  - ArUco 班が出しているのはマーカーの 3D の位置と姿勢（アーム用）なので、補正には使わず OCR 側で検出し直す（検出は数ミリ秒で済む）
+  - 読むのは、4 つのマーカーが数フレーム続けて同じ位置に見えたとき（アームが止まって紙が安定したとき）に 1 回だけ。読み上げが終わったら `/ocr/done`（仮）で合図を出す
+  - マーカーの仕様は ArUco 班と共通: DICT_4X4_50、ID 0〜3、一辺 25mm、紙の端から 10mm 内側、左上を 0 として時計回り
   - 未決: A4 横の紙の見分け方（別の ID を使うか、マーカーの実寸から計算するか）
 - ROS 2 パッケージ化（`ros2 pkg create`）して、画像トピックを購読 → 読み取り → 翻訳 → 読み上げ、を 1 つのノードにする（ROS 2 で正式に使える Python で書く）。
