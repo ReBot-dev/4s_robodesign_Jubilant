@@ -3,7 +3,11 @@
 2026 ロボットデザイン チーム Jubilant のリポジトリ。
 
 D435（RGB-D カメラ）を取り付けたロボットアームで、**四隅に ArUco マーカーが印刷された紙**を検出し、
-その紙に書かれた**日本語の文字を OCR で読み取る**ことを目指すプロジェクトです。
+その紙に書かれた**海外の文書（英語）を OCR で読み取り、Claude で日本語に翻訳・要約して、VOICEVOX で読み上げる**ことを目指すプロジェクトです。
+
+```
+カメラ（D435i）→ ArUco で紙を正対補正 → OCR → Claude で翻訳・要約 → VOICEVOX で音声 → スピーカー
+```
 
 ## チーム分担とディレクトリ構成
 
@@ -13,7 +17,9 @@ D435（RGB-D カメラ）を取り付けたロボットアームで、**四隅�
 | パッケージ（`src/` 配下） | 担当 | 役割 |
 |---|---|---|
 | `aruco_detector` | ArUco 班 | 紙の四隅の ArUco を検出し、紙の位置・姿勢を出す |
-| `ocr_recognizer` | OCR 班 | 紙の日本語文字を読み取る（詳細 → [`src/ocr_recognizer/README.md`](src/ocr_recognizer/README.md)）|
+| `ocr_recognizer` | OCR 班 | 紙の英語の文字を読み取る（詳細 → [`src/ocr_recognizer/README.md`](src/ocr_recognizer/README.md)）|
+| `ocr_ai` | OCR 班 | 読み取った文字を Claude で日本語の読み上げ文にする（詳細 → [`src/ocr_ai/README.md`](src/ocr_ai/README.md)）|
+| `ocr_voicevox` | OCR 班 | VOICEVOX で音声を作る実験（詳細 → [`src/ocr_voicevox/README.md`](src/ocr_voicevox/README.md)）|
 | `arm_control` | アーム班 | アームの軌道生成・ロボットの動作 |
 | `msg_interfaces` | 共通 | 班どうしで受け渡すメッセージ型（`.msg`）の置き場 |
 | `bringup` | 共通 | 全部をまとめて起動する launch ファイル（最後の「合体」用）|
@@ -24,6 +30,7 @@ D435（RGB-D カメラ）を取り付けたロボットアームで、**四隅�
 
 - Ubuntu / Pop!_OS + **ROS 2 Jazzy**
 - `git`, Python 3.12
+- Rust（OCR 班の `src/ocr_ai/claude_rs` を動かす人だけ。`rustup` で入れる）
 
 ## はじめに：リポジトリを手元に持ってくる（最初の 1 回だけ）
 
@@ -31,7 +38,7 @@ D435（RGB-D カメラ）を取り付けたロボットアームで、**四隅�
 
 ```bash
 cd ~/github                 # 置きたい場所へ（どこでもよい）
-git clone https://github.com/ReBot-dev/4s_robodesign_jubilant.git
+git clone https://github.com/ReBot-dev/4s_robodesign_Jubilant.git 4s_robodesign_jubilant
 cd 4s_robodesign_jubilant
 ```
 
@@ -90,6 +97,10 @@ source install/setup.bash
 
 - `build/` `install/` `log/` … colcon が自動生成する
 - `.venv/` `__pycache__/` … Python の仮想環境・中間ファイル
+- `target/` … Rust（cargo）のビルド結果
+- `*.wav` … VOICEVOX で作った音声ファイル
+
+**API キーは絶対にコミットしない。** コードには書かず、環境変数（`ANTHROPIC_API_KEY` など）から読む。
 
 ## 困ったとき
 
