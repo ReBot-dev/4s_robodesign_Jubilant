@@ -1,0 +1,153 @@
+# Copyright 2022 RT Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import os
+
+from ament_index_python.packages import get_package_share_directory
+from crane_x7_description.robot_description_loader import RobotDescriptionLoader
+from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument, EmitEvent, ExecuteProcess, RegisterEventHandler
+from launch.actions import IncludeLaunchDescription
+from launch.conditions import IfCondition
+from launch.event_handlers import OnProcessExit
+from launch.events import Shutdown
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration
+from launch_ros.actions import Node
+from launch_ros.actions import SetParameter
+
+
+def generate_launch_description():
+    # PATHを追加で通さないとSTLファイルが読み込まれない
+    env = {
+        'GZ_SIM_SYSTEM_PLUGIN_PATH': os.environ['LD_LIBRARY_PATH'],
+        'GZ_SIM_RESOURCE_PATH': os.path.dirname(
+            get_package_share_directory('crane_x7_description')
+        ),
+    }
+    world_file = os.path.join(
+        get_package_share_directory('crane_x7_gazebo'), 'worlds', 'table.sdf'
+    )
+    gui_config = os.path.join(get_package_share_directory('crane_x7_gazebo'), 'gui', 'gui.config')
+    # -r オプションで起動時にシミュレーションをスタートしないと、コントローラが起動しない
+    # サーバーとGUIを別々にlaunchから管理する。GUI付きgzをshell経由で
+    # 起動すると、終了後に子のサーバーだけが残る場合がある。
+    gz_sim = ExecuteProcess(
+        cmd=['gz', 'sim', '-s', '-r', world_file],
+        output='screen',
+        additional_env=env,
+    )
+    gz_gui = ExecuteProcess(
+        cmd=['gz', 'sim', '-g', '--gui-config', gui_config],
+        condition=IfCondition(LaunchConfiguration('gazebo_gui')),
+        output='screen',
+        additional_env=env,
+    )
+
+    gz_sim_spawn_entity = Node(
+        package='ros_gz_sim',
+        executable='create',
+        output='screen',
+        arguments=[
+            '-topic',
+            '/robot_description',
+            '-name',
+            'crane_x7',
+            '-z',
+            '1.015',
+            '-allow_renaming',
+            'true',
+        ],
+    )
+
+    description_loader = RobotDescriptionLoader()
+    description_loader.use_gazebo = 'true'
+    description_loader.gz_control_config_package = 'crane_x7_control'
+    description_loader.gz_control_config_file_path = 'config/crane_x7_controllers.yaml'
+    description = description_loader.load()
+
+    robot_state_publisher = Node(
+        package='robot_state_publisher',
+        executable='robot_state_publisher',
+        parameters=[{'robot_description': description}],
+        output='screen'
+    )
+
+    move_group = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            [
+                get_package_share_directory('crane_x7_moveit_config'),
+                '/launch/run_move_group.launch.py',
+            ]
+        ),
+        launch_arguments={
+            'use_gazebo': 'true',
+            'gz_control_config_package': 'crane_x7_control',
+            'gz_control_config_file_path': 'config/crane_x7_controllers.yaml',
+        }.items(),
+    )
+
+    spawn_joint_state_controller = Node(
+        package='controller_manager',
+        executable='spawner',
+        output='screen',
+        arguments=['joint_state_controller'],
+    )
+
+    spawn_arm_controller = Node(
+        package='controller_manager',
+        executable='spawner',
+        output='screen',
+        arguments=['crane_x7_arm_controller'],
+    )
+
+    spawn_gripper_controller = Node(
+        package='controller_manager',
+        executable='spawner',
+        output='screen',
+        arguments=['crane_x7_gripper_controller'],
+    )
+
+    bridge = Node(
+        package='ros_gz_bridge',
+        executable='parameter_bridge',
+        output='screen',
+        arguments=[
+            '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
+        ],
+    )
+
+    return LaunchDescription(
+        [
+            DeclareLaunchArgument('gazebo_gui', default_value='true'),
+            SetParameter(name='use_sim_time', value=True),
+            RegisterEventHandler(OnProcessExit(
+                target_action=gz_sim,
+                on_exit=[EmitEvent(event=Shutdown(reason='Gazebo server exited'))],
+            )),
+            RegisterEventHandler(OnProcessExit(
+                target_action=gz_gui,
+                on_exit=[EmitEvent(event=Shutdown(reason='Gazebo GUI closed'))],
+            )),
+            gz_sim,
+            gz_gui,
+            gz_sim_spawn_entity,
+            robot_state_publisher,
+            move_group,
+            spawn_joint_state_controller,
+            spawn_arm_controller,
+            spawn_gripper_controller,
+            bridge,
+        ]
+    )

@@ -20,7 +20,7 @@ D435（RGB-D カメラ）を取り付けたロボットアームで、**四隅�
 | `ocr_recognizer` | OCR 班 | 紙の英語の文字を読み取る（詳細 → [`src/ocr_recognizer/README.md`](src/ocr_recognizer/README.md)）|
 | `ocr_ai` | OCR 班 | 読み取った文字を Claude で日本語の読み上げ文にする（詳細 → [`src/ocr_ai/README.md`](src/ocr_ai/README.md)）|
 | `ocr_voicevox` | OCR 班 | VOICEVOX で音声を作る実験（詳細 → [`src/ocr_voicevox/README.md`](src/ocr_voicevox/README.md)）|
-| `arm_control` | アーム班 | アームの軌道生成・ロボットの動作 |
+| `arm_control` | アーム班 | アームの軌道生成・ロボットの動作。活動度・眠気・睡眠表現のシミュレーションは [README](src/arm_control/README.md) を参照 |
 | `msg_interfaces` | 共通 | 班どうしで受け渡すメッセージ型（`.msg`）の置き場 |
 | `bringup` | 共通 | 全部をまとめて起動する launch ファイル（最後の「合体」用）|
 
@@ -106,3 +106,10 @@ source install/setup.bash
 
 - **push したら main に拒否された** → ルール通りです。ブランチを切ってから push し、PR で取り込みましょう。
 - **他の人の変更とぶつかった(conflict)** → 慌てず `git pull` してから落ち着いて解消。分からなければチームで相談。
+
+## CRANE-X7 の活動度・眠気シミュレーション
+
+`src/arm_control/` に活動度・眠気モデル・睡眠表現と検証スクリプトを配置しています。
+起動・セットアップは [src/arm_control/README.md](src/arm_control/README.md) を参照してください。
+依存する `src/crane_x7_ros/` と `src/crane_x7_description/` も同梱しています。
+取得元・変更点・個別ライセンスは [THIRD_PARTY.md](src/arm_control/THIRD_PARTY.md) に記録しています。

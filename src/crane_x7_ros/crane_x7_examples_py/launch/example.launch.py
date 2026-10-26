@@ -1,0 +1,74 @@
+# Copyright 2025 RT Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from ament_index_python.packages import get_package_share_directory
+from crane_x7_description.robot_description_loader import RobotDescriptionLoader
+from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
+from launch_ros.actions import Node
+from moveit_configs_utils import MoveItConfigsBuilder
+
+
+def generate_launch_description():
+    declare_example_name = DeclareLaunchArgument(
+        'example',
+        default_value='gripper_control',
+        description=(
+            'Set an example executable name: '
+            '[gripper_control, pose_groupstate, joint_values, pick_and_place]'
+        ),
+    )
+
+    declare_use_sim_time = DeclareLaunchArgument(
+        'use_sim_time',
+        default_value='false',
+        description=('Set true when using the gazebo simulator.'),
+    )
+
+    description_loader = RobotDescriptionLoader()
+
+    moveit_config = (
+        MoveItConfigsBuilder('crane_x7')
+        .moveit_cpp(
+            file_path=get_package_share_directory('crane_x7_examples_py')
+            + '/config/crane_x7_moveit_py_examples.yaml'
+        )
+        .to_moveit_configs()
+    )
+
+    moveit_config.robot_description = {
+        'robot_description': description_loader.load()
+    }
+
+    # 下記Issue対応のためここでパラメータを設定する
+    # https://github.com/moveit/moveit2/issues/2940#issuecomment-2401302214
+    config_dict = moveit_config.to_dict()
+    config_dict.update({'use_sim_time': LaunchConfiguration('use_sim_time')})
+
+    example_node = Node(
+        name=[LaunchConfiguration('example'), '_node'],
+        package='crane_x7_examples_py',
+        executable=LaunchConfiguration('example'),
+        output='screen',
+        parameters=[config_dict],
+    )
+
+    return LaunchDescription(
+        [
+            declare_example_name,
+            declare_use_sim_time,
+            example_node,
+        ]
+    )

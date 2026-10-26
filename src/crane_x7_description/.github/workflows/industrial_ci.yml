@@ -1,0 +1,24 @@
+name: industrial_ci
+
+on:
+  push:
+    paths-ignore:
+    - '**.md'
+  pull_request:
+    paths-ignore:
+    - '**.md'
+  workflow_dispatch:
+
+jobs:
+  industrial_ci:
+    strategy:
+      matrix:
+        env:
+          # テストがワークスペース内のパッケージに依存しているため、setup.bashを読み込む
+          # Ref: https://github.com/ros-industrial/industrial_ci/issues/585
+          - { ROS_DISTRO: jazzy, ROS_REPO: ros, BEFORE_RUN_TARGET_TEST_EMBED: "ici_with_unset_variables source /root/target_ws/install/setup.bash" }
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: "ros-industrial/industrial_ci@master"
+        env: ${{ matrix.env }}

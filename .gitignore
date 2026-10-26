@@ -17,3 +17,13 @@ src/ocr_recognizer/benchmark/en/d435/
 *.swp
 target/
 *.wav
+
+# Local environment / generated arm simulation results
+.env
+.env.*
+!.env.example
+.aws/
+.agents/
+.codex/
+/src/arm_control/simulation/results/
+*.pyo
