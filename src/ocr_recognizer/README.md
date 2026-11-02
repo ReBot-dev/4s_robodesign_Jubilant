@@ -15,7 +15,7 @@ ArUco 班が出す「正対補正した紙の画像」を入力にして、読�
 - **LLM（Claude）での翻訳・読み上げ文の生成は動作確認済み**（[`../ocr_ai/`](../ocr_ai/)）。Python 版に加えて Rust 版（`claude_rs`）も動く。
 - **VOICEVOX での音声合成も動作確認済み**（[`../ocr_voicevox/`](../ocr_voicevox/)）。
 - **正対補正は OCR 班でやることに決定**。カメラ画像を直接受け取り、ArUco の検出から補正まで OCR 側で行う（下の「これから」）。
-- **ROS 2 パッケージ化した。** ノード `ocr_node` は、カメラ画像のトピックを受け取るところまで動く（下の「ROS 2 ノード」）。
+- **ROS 2 パッケージ化した。** ノード `ocr_node` は、カメラ画像を受け取って ArUco で正対補正するところまで動く（下の「ROS 2 ノード」）。
 
 ## これまでの結果
 
@@ -89,8 +89,8 @@ colcon が中の `.venv` などを ROS のパッケージと勘違いしない�
 
 ## ROS 2 ノード（`ocr_node`）
 
-いまは「カメラ画像のトピック `/camera/camera/color/image_raw` を購読し、届いた画像の大きさをログに出す」だけ。
-このあと ArUco の検出・補正 → Claude → VOICEVOX を足していく。
+いまは「カメラ画像のトピック `/camera/camera/color/image_raw` を購読し、ArUco マーカー（ID 0〜3）が 4 つそろったら正対補正して `/tmp/rectified.png` に保存する」ところまで。
+このあと Claude → VOICEVOX を足していく。
 
 ### ビルドと実行
 
@@ -115,7 +115,7 @@ ros2 run image_publisher image_publisher_node \
 ```
 
 - `benchmark/en/d435/photos/` は D435i と同じ画素数（約 207 万画素）に縮めた写真。git 管理外なので、無ければ `benchmark/make_d435.py` で作るか、`test_docs/en/photos/` の元写真（約 1250 万画素・重い）を使う
-- ノードのログに `受け取った: 1660x1250` が 1 秒に 2 回出れば OK
+- ノードのログに `マーカー [0, 1, 2, 3] → /tmp/rectified.png` が出て、`/tmp/rectified.png` の紙が真っ直ぐ（2100×2970）になっていれば OK
 - 流れているかの確認は `ros2 topic hz /camera/camera/color/image_raw`、画像を見るなら `ros2 run rqt_image_view rqt_image_view`
 
 ### ハマりどころ（ROS 2 ノード）
@@ -197,7 +197,8 @@ cd paddleocr_test && python test.py        # PaddleOCR
   - 未決: A4 横の紙の見分け方（別の ID を使うか、マーカーの実寸から計算するか）
 - `ocr_node` を段階的に作る（ROS 2 で正式に使える Python で書く）:
   1. ✅ 画像トピックを購読して受け取る
-  2. ArUco の検出と補正（`rectify.py` の処理を OpenCV 4.6 の書き方で移す）
+  2. ✅ ArUco の検出と補正（`rectify.py` の処理を OpenCV 4.6 の書き方で移した。いまは A4 縦に決め打ち、結果を `/tmp/rectified.png` に保存）
+  - 次: 4 つのマーカーが数フレーム続けて見えたら 1 回だけ読む・処理中は新しい画像を無視する
   3. 補正した画像を Claude に直接渡して `Reading` を受け取る（OCR と翻訳を 1 回でまとめる）。`anthropic` は `--system-site-packages` 付きの仮想環境で使う
   4. `summary` を VOICEVOX で音声にして再生し、`/ocr/done` を出す
   - Claude と VOICEVOX は数十秒かかるので、処理中に届いた画像は無視する
