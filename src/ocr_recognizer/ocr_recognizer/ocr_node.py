@@ -1,22 +1,25 @@
 # =============================================================================
-# ocr_node — カメラ画像から紙を見つけて、Claude で日本語の読み上げ文にするノード
+# ocr_node — カメラ画像から紙を見つけて、Claude で日本語にし、VOICEVOX で読み上げるノード
 #
 # 流れ（画像が届くたびに on_image が呼ばれる）:
 #   1. ArUco マーカー（ID 1〜4）を 4 つ探す
 #   2. マーカーが「止まったまま 1 秒」見えたら、その紙を読むと決める（安定判定）
 #   3. 紙を真上から見た形に補正し、読む向きに 90 度回す
 #   4. 補正した画像を Claude に送り、要点・全文・不明な点を受け取る
-#      （Claude は時間がかかるので、別のスレッドで動かす）
+#   5. 要点を VOICEVOX で音声にしてスピーカーで鳴らし、/ocr/done に「読み終わった」を出す
+#      （4 と 5 は時間がかかるので、別のスレッドで動かす）
 #
 # 動かす前に:
 #   source .venv/bin/activate                        # anthropic が入った仮想環境
 #   read -rs ANTHROPIC_API_KEY && export ANTHROPIC_API_KEY
+#   VOICEVOX のアプリを起動しておく（開いている間だけ音声合成のサーバーが動く）
 # =============================================================================
 
 # ros2 package
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image
+from std_msgs.msg import String
 from cv_bridge import CvBridge
 
 # AruCo detect
@@ -30,6 +33,10 @@ import threading
 import time
 import anthropic
 from pydantic import BaseModel
+
+# VOICEVOX
+import subprocess
+import requests
 
 from ocr_recognizer.prompt import SYSTEM_PROMPT
 
@@ -52,6 +59,11 @@ STILL_SEC = 1.0     # 止まった状態がこの秒数続いたら読む
 MODEL = 'claude-opus-5-5'
 # ベンチマークでは Haiku（'claude-haiku-5-5'）でも文字の読み取りは十分正確だった。
 # 料金や速さを優先したくなったら、ここを変えて比べてみる。
+
+VOICEVOX_URL = 'http://localhost:50021'   # VOICEVOX アプリが開く音声合成サーバー
+SPEAKER = 3          # 話者の番号。3 = ずんだもん（2 = 四国めたん、8 = 春日部つむぎ など）
+SPEED = 1.2          # 話す速さ。1.0 が標準。要点（250 字くらい）が 1 分近くかかるので少し速める
+# 作った音声を人に聞かせるときは「VOICEVOX:ずんだもん」のようにクレジットを表示する決まりがある
 
 
 # ---- Claude から受け取る形 --------------------------------------------------
@@ -78,6 +90,26 @@ def marker_corners_mm():
             for i, (x, y) in tl.items()}
 
 
+# ---- VOICEVOX で読み上げる -------------------------------------------------------
+
+def speak(text):
+    """text を VOICEVOX で音声（wav）にして、スピーカーで鳴らす。鳴り終わるまで待つ。"""
+    # ① 文章から「読み方のデータ」（アクセント・長さなど）を作ってもらう
+    query = requests.post(f'{VOICEVOX_URL}/audio_query',
+                          params={'text': text, 'speaker': SPEAKER}, timeout=30)
+    query.raise_for_status()                 # エラーの返事なら、ここで例外にする
+    q = query.json()
+    q['speedScale'] = SPEED                  # 読み方のデータの中の「速さ」を書き換える
+
+    # ② 読み方のデータを渡して、音声（wav）を作ってもらう
+    wav = requests.post(f'{VOICEVOX_URL}/synthesis',
+                        params={'speaker': SPEAKER}, json=q, timeout=120)
+    wav.raise_for_status()
+
+    # ③ aplay（Linux の音声再生コマンド）に wav を渡して鳴らす。ファイルには保存しない
+    subprocess.run(['aplay', '-q'], input=wav.content, check=True)
+
+
 # ---- ノード本体 ------------------------------------------------------------------
 
 class OcrNode(Node):
@@ -96,14 +128,18 @@ class OcrNode(Node):
         self.prev = None          # 前の画像でのマーカーの角の位置（16 点）
         self.still_since = None   # 止まり始めた時刻
         self.done = False         # この紙はもう読んだか
-        self.busy = False         # いま Claude に問い合わせ中か
+        self.busy = False         # いま Claude に問い合わせ中・読み上げ中か
+
+        # 読み終わったことを知らせるトピック。中身は読み上げた要点（失敗したときは空の文字列）
+        # アーム班はこれを受け取ったら、次の動きに進める
+        self.done_pub = self.create_publisher(String, '/ocr/done', 10)
 
         self.create_subscription(Image, '/camera/camera/color/image_raw', self.on_image, 10)
         self.get_logger().info('画像を待っています')
 
     # 画像が届くたびに呼ばれる ------------------------------------------------
     def on_image(self, msg):
-        # Claude に問い合わせ中は、何もしないですぐ戻る
+        # Claude に問い合わせ中・読み上げ中は、何もしないですぐ戻る
         if self.busy:
             return
 
@@ -166,8 +202,9 @@ class OcrNode(Node):
         self.busy = True
         threading.Thread(target=self.read_with_claude, args=(warped,), daemon=True).start()
 
-    # 別スレッドで動く：Claude に画像を送って結果を受け取る -----------------------
+    # 別スレッドで動く：Claude に画像を送って結果を受け取り、読み上げる -------------
     def read_with_claude(self, warped):
+        summary = ''   # 読み上げた要点。途中で失敗したら空のまま /ocr/done に出す
         try:
             # 画像を JPEG にして、文字列（base64）に変換する。API には文字列で送る決まり
             ok, jpg = cv2.imencode('.jpg', warped, [cv2.IMWRITE_JPEG_QUALITY, 90])
@@ -200,7 +237,16 @@ class OcrNode(Node):
             self.get_logger().info(f'種類: {reading.doc_type}')
             self.get_logger().info(f'要点: {reading.summary}')
             self.get_logger().info(f'不明な点: {reading.unclear}')
-            # 次の段階で、ここで reading.summary を VOICEVOX に渡して読み上げる
+
+            # --- 5. VOICEVOX で読み上げる ---
+            text = reading.summary
+            if reading.unclear:
+                # 聞く人は紙を見られないので、読めなかった所があったことだけは伝える
+                text += ' なお、読み取れない部分がありました。原本で確認してください。'
+            self.get_logger().info('読み上げます')
+            speak(text)
+            summary = reading.summary
+            self.get_logger().info('読み上げ終わり')
 
         except anthropic.AuthenticationError:
             self.get_logger().error('API キーが違うか、設定されていません（ANTHROPIC_API_KEY）')
@@ -213,11 +259,19 @@ class OcrNode(Node):
             self.get_logger().error(f'Claude につながりません（ネット接続を確認）: {e.__cause__!r}')
         except anthropic.APIStatusError as e:
             self.get_logger().error(f'Claude からエラー {e.status_code}: {e.message}')
+        except requests.exceptions.ConnectionError:
+            self.get_logger().error('VOICEVOX につながりません（VOICEVOX のアプリを起動してください）')
+        except requests.exceptions.RequestException as e:
+            self.get_logger().error(f'VOICEVOX からエラー: {e}')
+        except subprocess.CalledProcessError:
+            self.get_logger().error('音声を鳴らせませんでした（aplay が失敗。スピーカーの設定を確認）')
         except Exception as e:
             # 上のどれにも当てはまらないエラー（キー未設定のときもここに来る）
-            self.get_logger().error(f'Claude を呼べませんでした: {e}')
+            self.get_logger().error(f'うまくいきませんでした: {e}')
         finally:
-            # 成功しても失敗しても、最後に必ず「問い合わせ中」を解除する
+            # 成功しても失敗しても、最後に必ず「読み終わった」を知らせて、「処理中」を解除する
+            # （失敗したときに知らせないと、アームがずっと待ち続けてしまう）
+            self.done_pub.publish(String(data=summary))
             self.busy = False
 
 

@@ -90,14 +90,16 @@ colcon が中の `.venv` などを ROS のパッケージと勘違いしない�
 
 ## ROS 2 ノード（`ocr_node`）
 
-カメラ画像のトピック `/camera/camera/color/image_raw` を購読し、次の順に処理する。
+カメラ画像のトピック `/camera/camera/color/image_raw` を購読し、次の順に処理する（ここまでで OCR 班の担当分は一通りそろった）。
 
 1. ArUco マーカー（ID 1〜4）を 4 つ探す
 2. マーカーが「止まったまま 1 秒」見えたら、その紙を読むと決める（同じ紙は 1 回だけ。マーカーが見えなくなったらリセット）
 3. 紙を真上から見た形に補正し、読む向きに 90 度回す（確認用に `/tmp/rectified.png` に保存）
-4. 補正した画像を Claude に直接送り、`Reading`（種類・要点・全文・不明な点）を受け取ってログに出す。Claude は 10〜20 秒かかるので別スレッドで動かし、その間に届いた画像は無視する
+4. 補正した画像を Claude に直接送り、`Reading`（種類・要点・全文・不明な点）を受け取ってログに出す
+5. 要点を VOICEVOX で音声にしてスピーカーで鳴らす（話者はずんだもん、速さ 1.2 倍）。読めなかった所があれば「原本で確認してください」と付け足す
+6. `/ocr/done`（`std_msgs/String`）を出す。中身は読み上げた要点。**途中で失敗したときも空の文字列で出す**（アームが待ち続けないように）
 
-次は 4 の後ろで、要点を VOICEVOX で読み上げ、`/ocr/done` を出す。
+4〜6 は合わせて数十秒かかるので別スレッドで動かし、その間に届いた画像は無視する。
 
 | ファイル | 中身 |
 |---|---|
@@ -135,6 +137,7 @@ cd ~/github/4s_robodesign_jubilant
 source .venv/bin/activate                              # 端末を開くたびに
 source install/setup.bash                              # 端末を開くたびに（ビルド後）
 read -rs ANTHROPIC_API_KEY && export ANTHROPIC_API_KEY # 端末を開くたびに。キーは画面にも履歴にも残らない
+# VOICEVOX のアプリを起動しておく（開いている間だけ http://localhost:50021 で音声合成が動く）
 colcon build --packages-select ocr_recognizer
 ros2 run ocr_recognizer ocr_node
 ```
@@ -161,6 +164,9 @@ ros2 run image_publisher image_publisher_node \
 - **`Claude につながりません ... process() takes no keyword arguments`** → 仮想環境の brotli が古い（apt の 1.1 が使われている）。`.venv/bin/pip install "brotli>=1.2"`。このエラーは**返事を受け取った後**に起きるので、Claude の料金はかかっている（SDK が自動で最大 3 回やり直す）
 - **`ANTHROPIC_API_KEY が設定されていません`** → その端末で `read -rs ANTHROPIC_API_KEY && export ANTHROPIC_API_KEY`
 - **「画像を待っています」のまま** → 誰も画像を流していない。上の `image_publisher` を別の端末で動かす
+- **`VOICEVOX につながりません`** → VOICEVOX のアプリが閉じている。開いてから、紙を置き直す（画像を流し直す）
+- **音が出ない（`aplay が失敗`）** → スピーカーの出力先を確認。`aplay` の代わりに `pw-play` や `paplay` でも鳴らせる
+- 読み上げた音声を人に聞かせるときは、**「VOICEVOX:ずんだもん」のようにクレジットを表示する**（話者を変えたらその名前）
 - **`import cv2` や `cv_bridge` が numpy のエラーで落ちる** → `~/.local` に pip で入れた numpy 2.x が、システムの numpy 1.26 より優先されている。`~/.local/lib/python3.12/site-packages/` の `numpy` 関係を消す（`pip uninstall` には `--user` の指定がない）
 - **Ubuntu 24.04 の OpenCV は 4.6** なので、`cv2.aruco.ArucoDetector`（4.7 以降）は使えない。`cv2.aruco.detectMarkers(gray, dictionary)` の書き方を使う
 - **`colcon build --packages-select` の名前は `ocr_recognizer`**（アンダースコア）。`ocr-recognizer` だと無視される
@@ -239,5 +245,5 @@ cd paddleocr_test && python test.py        # PaddleOCR
   1. ✅ 画像トピックを購読して受け取る
   2. ✅ ArUco の検出と補正（`rectify.py` の処理を OpenCV 4.6 の書き方で移した。カード用に、台紙の向きで補正してから 90 度回す）
   3. ✅ 安定判定（止まったまま 1 秒で 1 回だけ）と、補正した画像を Claude に直接渡して `Reading` を受け取る（OCR と翻訳を 1 回でまとめる。合成画像で 13 秒・数字は全部正解）
-  4. `summary` を VOICEVOX で音声にして再生し、`/ocr/done` を出す
+  4. ✅ `summary` を VOICEVOX で音声にして再生し、`/ocr/done` を出す（実機の VOICEVOX アプリで確認済み）
   - カードを印刷して、本物の D435i で撮った画像で確かめる
