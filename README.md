@@ -91,6 +91,7 @@ ros2 run ocr_recognizer ocr_node
 ```
 
 いま ROS 2 パッケージになっているのは `ocr_recognizer` だけです。
+`ocr_node` は Claude の SDK を使うので、仮想環境（`.venv`）の準備と API キーが要ります（手順は [`src/ocr_recognizer/README.md`](src/ocr_recognizer/README.md) の「ROS 2 ノード」）。
 
 **自分のフォルダを ROS 2 パッケージにするには** `ros2 pkg create <パッケージ名> --build-type ament_python --dependencies rclpy ...`（Python の場合）を使います。
 フォルダが既にあると作れないので、別の場所（`/tmp` など）で作ってから中身をコピーします（`cp -rn` で既存のファイルは上書きしない）。

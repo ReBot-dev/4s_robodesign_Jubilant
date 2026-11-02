@@ -1,0 +1,14 @@
+INVOICE
+Invoice No. INV-2026-1102-03
+Date: 11/02/2026
+Due Date: 12/15/2026
+Bill to: Department of Robotics, Sample Institute of Technology
+From: Example Robotics Supply Co., Tel: (555) 010-4567
+Item | Description | Qty | Unit | Amount
+SV-2040 | Micro servo motor | 4 | 24.50 | 98.00
+M3-8-PH100 | M3×8 screw (100 pcs) | 2 | 4.20 | 8.40
+USBC-1M | USB-C cable, 1.0 m | 3 | 6.49 | 19.47
+Subtotal | 125.87
+Sales Tax (8.25%) | 10.38
+Total (USD) | $136.25
+Bank transfer: First Example Bank, Account No. 0012-3456-78
