@@ -15,6 +15,7 @@ ArUco 班が出す「正対補正した紙の画像」を入力にして、読�
 - **LLM（Claude）での翻訳・読み上げ文の生成は動作確認済み**（[`../ocr_ai/`](../ocr_ai/)）。Python 版に加えて Rust 版（`claude_rs`）も動く。
 - **VOICEVOX での音声合成も動作確認済み**（[`../ocr_voicevox/`](../ocr_voicevox/)）。
 - **正対補正は OCR 班でやることに決定**。カメラ画像を直接受け取り、ArUco の検出から補正まで OCR 側で行う（下の「これから」）。
+- **ROS 2 パッケージ化した。** ノード `ocr_node` は、カメラ画像のトピックを受け取るところまで動く（下の「ROS 2 ノード」）。
 
 ## これまでの結果
 
@@ -78,8 +79,52 @@ OCR の結果（英語）を Claude に渡し、日本語の読み上げ文に�
 | `paddleocr_test/` | PaddleOCR の実験（`test.py`、`requirements.txt`） |
 | `test_docs/` | テスト文書と撮影写真（[`test_docs/README.md`](test_docs/README.md)） |
 | `benchmark/` | 比較ベンチマーク（[`benchmark/README.md`](benchmark/README.md)） |
+| `ocr_recognizer/ocr_node.py` | ROS 2 ノードの本体 |
+| `package.xml` `setup.py` `setup.cfg` `resource/` `test/` | ROS 2 パッケージの設定（`ros2 pkg create` で作ったもの） |
 
 `.venv/`（Python 仮想環境）はどのフォルダでも **git 管理外**。各自が自分の PC で作る。
+
+実験用のフォルダ（`benchmark/` `easyocr_test/` `paddleocr_test/`）には空のファイル `COLCON_IGNORE` を置いてある。
+colcon が中の `.venv` などを ROS のパッケージと勘違いしないようにするため。
+
+## ROS 2 ノード（`ocr_node`）
+
+いまは「カメラ画像のトピック `/camera/camera/color/image_raw` を購読し、届いた画像の大きさをログに出す」だけ。
+このあと ArUco の検出・補正 → Claude → VOICEVOX を足していく。
+
+### ビルドと実行
+
+**必ずリポジトリのルートで** ビルドする（パッケージの中で実行すると、そこに `build/` `install/` `log/` ができてしまう）。
+
+```bash
+cd ~/github/4s_robodesign_jubilant
+colcon build --packages-select ocr_recognizer
+source install/setup.bash
+ros2 run ocr_recognizer ocr_node
+```
+
+### カメラなしで試す（写真をトピックに流す）
+
+```bash
+sudo apt install ros-jazzy-image-publisher     # 最初の 1 回だけ
+
+# 別の端末で。写真をカメラと同じトピック名で 1 秒に 2 回流す
+ros2 run image_publisher image_publisher_node \
+  ~/github/4s_robodesign_jubilant/src/ocr_recognizer/benchmark/en/d435/photos/02_flat.jpg \
+  --ros-args -r image_raw:=/camera/camera/color/image_raw -p publish_rate:=2.0
+```
+
+- `benchmark/en/d435/photos/` は D435i と同じ画素数（約 207 万画素）に縮めた写真。git 管理外なので、無ければ `benchmark/make_d435.py` で作るか、`test_docs/en/photos/` の元写真（約 1250 万画素・重い）を使う
+- ノードのログに `受け取った: 1660x1250` が 1 秒に 2 回出れば OK
+- 流れているかの確認は `ros2 topic hz /camera/camera/color/image_raw`、画像を見るなら `ros2 run rqt_image_view rqt_image_view`
+
+### ハマりどころ（ROS 2 ノード）
+
+- **`import cv2` や `cv_bridge` が numpy のエラーで落ちる** → `~/.local` に pip で入れた numpy 2.x が、システムの numpy 1.26 より優先されている。`~/.local/lib/python3.12/site-packages/` の `numpy` 関係を消す（`pip uninstall` には `--user` の指定がない）
+- **Ubuntu 24.04 の OpenCV は 4.6** なので、`cv2.aruco.ArucoDetector`（4.7 以降）は使えない。`cv2.aruco.detectMarkers(gray, dictionary)` の書き方を使う
+- **`colcon build --packages-select` の名前は `ocr_recognizer`**（アンダースコア）。`ocr-recognizer` だと無視される
+- `package.xml` の `<depend>` は重複・大文字小文字の違いがあると、パッケージとして読み込まれない
+- エラーが出たら、Python のエラーは**一番下の行**から読む。`/opt/ros/...` の行は ROS の内部なので読み飛ばしてよい
 
 ## セットアップ（Python 仮想環境の作り方から）
 
@@ -150,4 +195,9 @@ cd paddleocr_test && python test.py        # PaddleOCR
   - 読むのは、4 つのマーカーが数フレーム続けて同じ位置に見えたとき（アームが止まって紙が安定したとき）に 1 回だけ。読み上げが終わったら `/ocr/done`（仮）で合図を出す
   - マーカーの仕様は ArUco 班と共通: DICT_4X4_50、ID 0〜3、一辺 25mm、紙の端から 10mm 内側、左上を 0 として時計回り
   - 未決: A4 横の紙の見分け方（別の ID を使うか、マーカーの実寸から計算するか）
-- ROS 2 パッケージ化（`ros2 pkg create`）して、画像トピックを購読 → 読み取り → 翻訳 → 読み上げ、を 1 つのノードにする（ROS 2 で正式に使える Python で書く）。
+- `ocr_node` を段階的に作る（ROS 2 で正式に使える Python で書く）:
+  1. ✅ 画像トピックを購読して受け取る
+  2. ArUco の検出と補正（`rectify.py` の処理を OpenCV 4.6 の書き方で移す）
+  3. 補正した画像を Claude に直接渡して `Reading` を受け取る（OCR と翻訳を 1 回でまとめる）。`anthropic` は `--system-site-packages` 付きの仮想環境で使う
+  4. `summary` を VOICEVOX で音声にして再生し、`/ocr/done` を出す
+  - Claude と VOICEVOX は数十秒かかるので、処理中に届いた画像は無視する

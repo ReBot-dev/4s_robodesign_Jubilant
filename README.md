@@ -80,16 +80,23 @@ git push -u origin ocr/easyocr-test
 
 ## ビルドと実行（ROS 2 / colcon）
 
-各パッケージの中身が揃ったら、リポジトリのルートでビルドします。
+**必ずリポジトリのルートで**ビルドします（`src/` の中や各パッケージの中で実行すると、そこに `build/` `install/` `log/` ができてしまいます）。
 
 ```bash
 cd ~/github/4s_robodesign_jubilant
-colcon build
-source install/setup.bash
+colcon build                                     # 全パッケージ
+colcon build --packages-select ocr_recognizer    # 1 つだけ（名前はアンダースコア）
+source install/setup.bash                        # ビルド後、端末ごとに 1 回
+ros2 run ocr_recognizer ocr_node
 ```
 
-> まだ各パッケージの中身を作っている段階です。自分のフォルダを ROS 2 パッケージにするには、
-> `src/` の中で `ros2 pkg create <パッケージ名> --build-type ament_python`（Python の場合）を使います。
+いま ROS 2 パッケージになっているのは `ocr_recognizer` だけです。
+
+**自分のフォルダを ROS 2 パッケージにするには** `ros2 pkg create <パッケージ名> --build-type ament_python --dependencies rclpy ...`（Python の場合）を使います。
+フォルダが既にあると作れないので、別の場所（`/tmp` など）で作ってから中身をコピーします（`cp -rn` で既存のファイルは上書きしない）。
+
+**ROS 2 パッケージではないフォルダ**（実験用・仮想環境 `.venv` があるフォルダなど）には、空のファイル `COLCON_IGNORE` を置きます。
+colcon がその中を探さなくなります（`src/ocr_ai/` `src/ocr_voicevox/` などに置いてあります）。
 
 ## コミットしてはいけないもの（設定済み）
 
