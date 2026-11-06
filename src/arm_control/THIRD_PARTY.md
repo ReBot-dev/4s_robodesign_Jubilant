@@ -11,6 +11,12 @@
 
 ## ベースコミットからのローカル修正
 
+`src/crane_x7_ros/crane_x7_control/launch/crane_x7_control.launch.py`:
+`control_update_rate`引数を追加し、controller_managerの周期を起動時に上書き可能にした。
+標準値200 Hzは維持する。実機用`hardware_activity.launch.py`では50 Hzを指定する。
+2026-11-02の実機ログで読み取りが約11〜16 msかかり、200 Hzの5 ms周期を超過していたため。
+コントローラの関節・インターフェースや実機ドライバのC++コードは変更していない。
+
 `src/crane_x7_ros/crane_x7_gazebo/launch/crane_x7_with_table.launch.py`:
 Gazebo のサーバーとGUIを別プロセスとしてlaunchから管理し、シェル経由の起動を廃止。
 どちらかの終了時にlaunch全体を終了し、サーバーが残る問題を修正。

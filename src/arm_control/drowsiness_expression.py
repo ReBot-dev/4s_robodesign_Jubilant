@@ -57,6 +57,8 @@ def make_cycle(origin, amplitude, period, lower, upper):
 
 
 class DrowsinessExpression(Node):
+    HARDWARE_PLUGIN = 'gz_ros2_control/GazeboSimSystem'
+
     def __init__(self, node_name='drowsiness_expression', amplitude_deg=5.0, period=4.0):
         super().__init__(node_name)
         for name, default in [('threshold', 0.6), ('amplitude_deg', amplitude_deg), ('period', period)]:
@@ -78,7 +80,7 @@ class DrowsinessExpression(Node):
         self.origin = None
         self.limits = None
         self.velocity_limit = None
-        self.simulation = False
+        self.model_verified = False
         self.pending = False
         self.goal_handle = None
         self.cancel_requested = False
@@ -87,6 +89,8 @@ class DrowsinessExpression(Node):
         self.next_start = 0.0
         self.last_tick = None
         self.expression = self.create_publisher(Bool, '/expression_active', 10)
+        self.expression_velocity = self.create_publisher(
+            JointState, '/expression_joint_velocity', 10)
         self.arm = ActionClient(self, FollowJointTrajectory,
                                 '/crane_x7_arm_controller/follow_joint_trajectory')
         self.create_subscription(Float32, '/drowsiness', self.on_drowsiness, 10)
@@ -103,15 +107,16 @@ class DrowsinessExpression(Node):
         try:
             root = ET.fromstring(msg.data)
             plugins = [p.text for p in root.findall('./ros2_control/hardware/plugin')]
-            self.simulation = bool(plugins) and all(
-                p == 'gz_ros2_control/GazeboSimSystem' for p in plugins)
+            self.model_verified = bool(plugins) and all(
+                p == self.HARDWARE_PLUGIN for p in plugins)
             limit = root.find(f"./joint[@name='{NOD_JOINT}']/limit")
             self.limits = (float(limit.attrib['lower']), float(limit.attrib['upper']))
             self.velocity_limit = float(limit.attrib['velocity'])
         except (ET.ParseError, AttributeError, KeyError, ValueError):
-            self.simulation = False
-        if not self.simulation:
-            self.get_logger().error('Gazeboのモデルを確認できないため動作を送信しません')
+            self.model_verified = False
+        if not self.model_verified:
+            self.get_logger().error(
+                f'対象モデル（{self.HARDWARE_PLUGIN}）を確認できないため動作を送信しません')
 
     def on_drowsiness(self, msg):
         if math.isfinite(msg.data):
@@ -139,7 +144,7 @@ class DrowsinessExpression(Node):
             self.sleep_stamp = self.joint_stamp = None
         if self.active:
             self.expression.publish(Bool(data=True))
-        if (not self.inputs_fresh(now) or not self.simulation) and self.goal_handle is not None:
+        if (not self.inputs_fresh(now) or not self.model_verified) and self.goal_handle is not None:
             if not self.cancel_requested:
                 self.cancel_requested = True
                 self.goal_handle.cancel_goal_async()
@@ -152,7 +157,7 @@ class DrowsinessExpression(Node):
             self.expression.publish(Bool(data=False))
         if self.sleepiness < self.threshold:
             self.origin = None
-        if (self.blocked or not self.simulation or not self.inputs_fresh(now)
+        if (self.blocked or not self.model_verified or not self.inputs_fresh(now)
                 or self.sleepiness < self.threshold or not self.arm.server_is_ready()):
             return
         try:
@@ -172,7 +177,14 @@ class DrowsinessExpression(Node):
         goal = FollowJointTrajectory.Goal()
         goal.trajectory.joint_names = JOINTS
         goal.trajectory.points = points
-        self.arm.send_goal_async(goal).add_done_callback(self.on_goal)
+        self.arm.send_goal_async(
+            goal, feedback_callback=self.on_feedback).add_done_callback(self.on_goal)
+
+    def on_feedback(self, message):
+        # 活動度ノードが表現の動きだけを差し引けるよう、指令角速度を伝える。
+        feedback = message.feedback
+        self.expression_velocity.publish(JointState(
+            name=list(feedback.joint_names), velocity=list(feedback.desired.velocities)))
 
     def on_goal(self, future):
         self.pending = False
@@ -199,6 +211,8 @@ class DrowsinessExpression(Node):
             # 他の操作が割り込んだら取り返さず、次のしきい値到達まで待つ。
             self.blocked = True
         self.goal_handle = None
+        # 軌道は終了済み。古い指令で手動操作を打ち消さないよう、すぐ解除する。
+        self.expression_velocity.publish(JointState())
         self.next_start = self.now() + 0.3
 
 

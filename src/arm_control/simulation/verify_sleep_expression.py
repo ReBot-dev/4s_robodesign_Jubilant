@@ -15,7 +15,7 @@ from std_msgs.msg import Bool, Float32
 from verify_activity import JOINTS, Verification
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from sleep_expression import SleepExpression, sleep_pose
+from sleep_expression import SleepExpression, sleep_pose, waiting_pose
 
 
 def main():
@@ -41,14 +41,20 @@ def main():
                 sys.executable, str(root / script), '--ros-args', '-p', 'use_sim_time:=true',
                 *extra]))
         node.wait_until(lambda: publisher.get_subscription_count() > 0)
-        node.sample(1)
-        assert not node.expression_value
-        node.test_sleepiness = .6
-        target = sleep_pose(origin)
 
         def pose_near(values):
             q = dict(zip(node.joints.name, node.joints.position))
             return max(abs(q[name] - value) for name, value in zip(JOINTS, values)) < .005
+
+        # 起動後は待機姿勢へ一度移動する。到達後の姿勢を復帰先として使う。
+        waiting = waiting_pose(origin)
+        node.wait_until(lambda: pose_near(waiting) and not node.expression_value, timeout=60)
+        node.sample(1)
+        assert not node.expression_value
+        current = dict(zip(node.joints.name, node.joints.position))
+        origin = [current[name] for name in JOINTS]
+        node.test_sleepiness = .6
+        target = sleep_pose(origin)
 
         node.wait_until(lambda: pose_near(target), timeout=60)
         node.sample(1)
@@ -61,6 +67,7 @@ def main():
         assert max(abs(sum(q[i] for i in (1, 3, 5)) + math.pi) for q in poses) < .01
         assert max(abs(q[3] - target[3]) for q in poses) < .005
         activity = [v for phase, v in node.activity_samples if phase == 'sleeping']
+        # 表現の指令分は差し引かれるので、揺れだけでは活動度は上がらない。
         assert activity and max(activity) < .01, activity[-5:]
 
         assert fk.wait_for_service(timeout_sec=5)
@@ -90,6 +97,7 @@ def main():
                        tip_height_range=[min(heights), max(heights)],
                        shoulder_range_deg=[math.degrees(min(tilt)), math.degrees(max(tilt))],
                        activity_max=max(activity), returned_to_awake_pose=True)
+        (root / 'simulation/results').mkdir(exist_ok=True)
         (root / 'simulation/results/sleep_summary.json').write_text(
             json.dumps(summary, indent=2) + '\n')
         print(json.dumps(summary, indent=2))

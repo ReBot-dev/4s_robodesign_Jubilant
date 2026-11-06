@@ -118,8 +118,7 @@ class Verification(Node):
         reported = [c.plugin_name or c.class_type for c in components.component]
         assert components.component and all(not p or p in plugins for p in reported), reported
         assert self.arm.wait_for_server(timeout_sec=30), 'Arm action is unavailable'
-        self.wait_until(lambda: self.joints is not None and self.activity is not None
-                        and self.expression.get_subscription_count() > 0)
+        self.wait_until(lambda: self.joints is not None and self.activity is not None)
         self.expression.publish(Bool(data=False))
         self.phase = 'stationary'
         self.sample(3)
@@ -133,14 +132,14 @@ class Verification(Node):
         self.sample(3)
         self.expression.publish(Bool(data=True))
         self.sample(0.2)
-        self.phase = 'expression_frozen'
+        self.phase = 'during_expression'
         self.move([(3, target), (6, origin)])
         self.expression.publish(Bool(data=False))
         self.phase = 'released'
         self.sample(3)
 
         summary = {'hardware_plugins': plugins, 'actions': self.actions, 'phases': {}}
-        for phase in ('stationary', 'moving', 'stopped', 'expression_frozen', 'released'):
+        for phase in ('stationary', 'moving', 'stopped', 'during_expression', 'released'):
             rows = [r for r in self.rows if r['phase'] == phase]
             values = [value for label, value in self.activity_samples if label == phase]
             assert rows and values, f'Missing data in {phase}'
@@ -162,10 +161,8 @@ class Verification(Node):
             'moving_activity_high': phases['moving']['activity_max'] > 0.9,
             'arm_really_moved': phases['moving']['pan_position_range'] > 0.25,
             'stopped_activity_decays': phases['stopped']['activity_final'] < 0.1,
-            'expression_arm_really_moved': phases['expression_frozen']['pan_position_range'] > 0.25,
-            'expression_activity_frozen': (
-                phases['expression_frozen']['activity_max'] -
-                phases['expression_frozen']['activity_min'] < 1e-6),
+            'expression_arm_really_moved': phases['during_expression']['pan_position_range'] > 0.25,
+            'activity_counts_during_expression': phases['during_expression']['activity_max'] > 0.9,
         }
         output = Path(__file__).resolve().parent / 'results'
         output.mkdir(exist_ok=True)

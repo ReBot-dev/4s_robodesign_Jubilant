@@ -45,8 +45,9 @@ def main():
         tilt = [r['position'][r['names'].index(JOINTS[1])] for r in rows]
         assert max(tilt) - min(tilt) > .15, (min(tilt), max(tilt))
         assert max(abs(v - origin[JOINTS[1]]) for v in tilt) < .11
-        frozen = [v for phase, v in node.activity_samples if phase == 'nodding']
-        assert max(frozen) - min(frozen) < .01, (min(frozen), max(frozen))
+        activity = [v for phase, v in node.activity_samples if phase == 'nodding']
+        # 表現の指令分は差し引かれるので、上下動だけでは活動度は上がらない。
+        assert max(activity) < .01, (min(activity), max(activity))
         other_joint_drift = max(abs(r['position'][r['names'].index(name)] - origin[name])
                                 for r in rows for name in JOINTS if name != JOINTS[1])
         assert other_joint_drift < .02, other_joint_drift
@@ -63,8 +64,9 @@ def main():
         assert abs(stopped[-1] - origin[JOINTS[1]]) < .01
         summary = dict(tilt_min=min(tilt), tilt_max=max(tilt),
                        stopped_tilt=stopped[-1], other_joint_drift=other_joint_drift,
-                       activity_range=[min(frozen), max(frozen)], all_checks_passed=True)
+                       activity_range=[min(activity), max(activity)], all_checks_passed=True)
         output = Path(__file__).resolve().parent / 'results' / 'nod_summary.json'
+        output.parent.mkdir(exist_ok=True)
         output.write_text(json.dumps(summary, indent=2) + '\n')
         print(json.dumps(summary, indent=2))
     finally:

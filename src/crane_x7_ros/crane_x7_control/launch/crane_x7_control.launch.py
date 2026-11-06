@@ -20,12 +20,17 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 
 
 def generate_launch_description():
 
     crane_x7_controllers = os.path.join(
         get_package_share_directory('crane_x7_control'), 'config', 'crane_x7_controllers.yaml'
+    )
+    declare_control_update_rate = DeclareLaunchArgument(
+        'control_update_rate', default_value='200',
+        description='Controller manager update rate [Hz].'
     )
 
     config_file_path = os.path.join(
@@ -126,7 +131,9 @@ def generate_launch_description():
         package='controller_manager',
         executable='ros2_control_node',
         output='screen',
-        parameters=[crane_x7_controllers],
+        parameters=[crane_x7_controllers, {
+            'update_rate': ParameterValue(LaunchConfiguration('control_update_rate'), value_type=int),
+        }],
     )
 
     spawn_joint_state_controller = Node(
@@ -151,6 +158,7 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
+        declare_control_update_rate,
         declare_port_name,
         declare_baudrate,
         declare_timeout_seconds,

@@ -19,10 +19,10 @@ class ExpressionTest(unittest.TestCase):
             threshold=0.6, amplitude=math.radians(5), period=4.0,
             sleepiness=0.0, sleep_stamp=10.0, joint_stamp=10.0,
             positions=[0.0] * 7, origin=None, limits=(-1.6, 1.6), velocity_limit=1.0,
-            simulation=True, pending=False, goal_handle=None, cancel_requested=False,
+            model_verified=True, pending=False, goal_handle=None, cancel_requested=False,
             blocked=False, active=False, next_start=0.0, last_tick=None,
             expression=Mock(), arm=Mock(), now=lambda: 10.0, get_logger=Mock(),
-            on_goal=Mock(),
+            on_goal=Mock(), on_feedback=Mock(), expression_velocity=Mock(),
         )
         node.arm.server_is_ready.return_value = True
         node.inputs_fresh = lambda now: DrowsinessExpression.inputs_fresh(node, now)
@@ -75,7 +75,7 @@ class ExpressionTest(unittest.TestCase):
 
     def test_inputs_missing_stale_non_simulation_do_not_move(self):
         for name, value in [('sleep_stamp', None), ('joint_stamp', 8.0),
-                            ('simulation', False), ('blocked', True)]:
+                            ('model_verified', False), ('blocked', True)]:
             node = self.make_node()
             node.sleepiness = .8
             setattr(node, name, value)

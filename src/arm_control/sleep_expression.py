@@ -22,6 +22,14 @@ def sleep_pose(origin):
             0.0, math.radians(-70), origin[6]]
 
 
+def waiting_pose(origin):
+    """睡眠姿勢から肩を10°起こし、手首で先端の下向きを保つ待機姿勢。"""
+    pose = sleep_pose(origin)
+    pose[1] += math.radians(10)
+    pose[5] -= math.radians(10)
+    return pose
+
+
 def sleep_cycle(center, amplitude, period, bounds):
     points = make_cycle(center, amplitude, period, *bounds[1][:2])
     for point in points:
@@ -39,11 +47,18 @@ def sleep_cycle(center, amplitude, period, bounds):
 class SleepExpression(DrowsinessExpression):
     def __init__(self):
         super().__init__(node_name='sleep_expression', amplitude_deg=3.0, period=6.0)
+        from rcl_interfaces.msg import ParameterDescriptor
+        for name, value in [('velocity_scaling', 0.2), ('acceleration_scaling', 0.1)]:
+            self.declare_parameter(name, value, ParameterDescriptor(read_only=True))
+            scale = self.get_parameter(name).value
+            if not math.isfinite(scale) or not 0 < scale <= 1:
+                raise ValueError(f'{name} must be in (0, 1]')
         self.bounds = None
         self.awake_pose = None
         self.sleep_center = None
         self.sleeping = False
         self.motion_kind = None
+        self.startup_attempted = False
         self.planner = self.create_client(GetMotionPlan, '/plan_kinematic_path')
         self.validity = self.create_client(GetStateValidity, '/check_state_validity')
         self.get_logger().info('睡眠表現: 先端を真下に向け、肩と手首で小さく上下に揺らします')
@@ -58,7 +73,7 @@ class SleepExpression(DrowsinessExpression):
                 self.bounds.append(tuple(float(limit.attrib[key])
                                          for key in ('lower', 'upper', 'velocity')))
         except (ET.ParseError, AttributeError, KeyError, ValueError):
-            self.simulation = False
+            self.model_verified = False
             self.bounds = None
 
     @staticmethod
@@ -75,7 +90,7 @@ class SleepExpression(DrowsinessExpression):
         if self.active:
             self.expression.publish(Bool(data=True))
         fresh = self.inputs_fresh(now)
-        if (not fresh or not self.simulation) and self.goal_handle is not None:
+        if (not fresh or not self.model_verified) and self.goal_handle is not None:
             if not self.cancel_requested:
                 self.cancel_requested = True
                 self.goal_handle.cancel_goal_async()
@@ -84,16 +99,21 @@ class SleepExpression(DrowsinessExpression):
         if self.active:
             self.active = False
             self.expression.publish(Bool(data=False))
-        if (self.blocked or not fresh or not self.simulation or self.bounds is None
+        if (self.blocked or not fresh or not self.model_verified or self.bounds is None
                 or not self.arm.server_is_ready()):
-            return
-        if self.sleepiness < self.threshold:
-            if self.sleeping:
-                self.plan_pose(self.awake_pose, 'waking')
             return
         if not self.planner.service_is_ready() or not self.validity.service_is_ready():
             self.get_logger().warning('MoveItの計画・衝突確認サービスを待っています',
                                       throttle_duration_sec=5.0)
+            return
+        if not self.startup_attempted:
+            # 起動後に一度だけ近くへ移動する。手動操作の割り込み後は取り返さない。
+            self.startup_attempted = True
+            self.plan_pose(waiting_pose(self.positions), 'waiting')
+            return
+        if self.sleepiness < self.threshold:
+            if self.sleeping:
+                self.plan_pose(self.awake_pose, 'waking')
             return
         if not self.sleeping:
             self.awake_pose = list(self.positions)
@@ -106,11 +126,18 @@ class SleepExpression(DrowsinessExpression):
                 return
             self.plan_pose(self.sleep_center, 'lowering')
         else:
-            points = sleep_cycle(self.sleep_center, self.amplitude, self.period, self.bounds)
+            try:
+                points = self.make_sleep_cycle()
+            except ValueError as error:
+                self.fail(error)
+                return
             self.pending = True
             self.active = True
             self.expression.publish(Bool(data=True))
             self.check_cycle(points, 0)
+
+    def make_sleep_cycle(self):
+        return sleep_cycle(self.sleep_center, self.amplitude, self.period, self.bounds)
 
     def fail(self, error):
         self.get_logger().error(str(error))
@@ -130,8 +157,8 @@ class SleepExpression(DrowsinessExpression):
         plan.pipeline_id = 'ompl'
         plan.num_planning_attempts = 3
         plan.allowed_planning_time = 5.0
-        plan.max_velocity_scaling_factor = 0.2
-        plan.max_acceleration_scaling_factor = 0.1
+        plan.max_velocity_scaling_factor = self.get_parameter('velocity_scaling').value
+        plan.max_acceleration_scaling_factor = self.get_parameter('acceleration_scaling').value
         plan.start_state = self.robot_state(self.positions)
         plan.goal_constraints = [Constraints(joint_constraints=[
             JointConstraint(joint_name=name, position=value, tolerance_above=.001,
@@ -143,7 +170,7 @@ class SleepExpression(DrowsinessExpression):
                 response = future.result().motion_plan_response
                 if response.error_code.val != 1:
                     raise RuntimeError(f'睡眠姿勢の計画に失敗: MoveIt {response.error_code.val}')
-                if not self.inputs_fresh(self.now()) or not self.simulation:
+                if not self.inputs_fresh(self.now()) or not self.model_verified:
                     raise RuntimeError('計画中に入力が途切れたため実行しません')
                 self.send_trajectory(response.trajectory.joint_trajectory, kind)
             except Exception as error:
@@ -151,7 +178,7 @@ class SleepExpression(DrowsinessExpression):
         self.planner.call_async(request).add_done_callback(planned)
 
     def check_cycle(self, points, index):
-        if (not self.inputs_fresh(self.now()) or not self.simulation
+        if (not self.inputs_fresh(self.now()) or not self.model_verified
                 or self.sleepiness < self.threshold):
             self.pending = False
             self.next_start = self.now() + .3
@@ -177,7 +204,8 @@ class SleepExpression(DrowsinessExpression):
         self.motion_kind = kind
         self.pending = True
         goal = FollowJointTrajectory.Goal(trajectory=trajectory)
-        self.arm.send_goal_async(goal).add_done_callback(self.on_goal)
+        self.arm.send_goal_async(
+            goal, feedback_callback=self.on_feedback).add_done_callback(self.on_goal)
 
     def on_result(self, future):
         try:
@@ -187,7 +215,9 @@ class SleepExpression(DrowsinessExpression):
         except Exception:
             success = False
         super().on_result(future)
-        if success and self.motion_kind == 'lowering':
+        if success and self.motion_kind == 'waiting':
+            self.get_logger().info('睡眠姿勢に近い待機姿勢に到達しました')
+        elif success and self.motion_kind == 'lowering':
             self.sleeping = True
             self.get_logger().info('先端を真下に向けた睡眠姿勢に到達しました')
         elif success and self.motion_kind == 'waking':
